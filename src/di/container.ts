@@ -16,7 +16,7 @@ import { LogoutUser } from "../domain/usecases/LogoutUser";
 import { GetCurrentUser } from "../domain/usecases/GetCurrentUser";
 import { AuthRepository } from "../domain/repositories/AuthRepository";
 import { UpdateUserProfile } from "../domain/usecases/UpdateUserProfile"; // <--- NUEVO IMPORT
-
+import { SendPasswordResetEmail } from "@/src/domain/usecases/SendPasswordResetEmail"; // ✅ NUEVO IMPORT
 // 🟢 Singleton para mantener una sola instancia
 class DIContainer {
   private static instance: DIContainer;
@@ -30,6 +30,8 @@ class DIContainer {
   private _logoutUser?: LogoutUser;
   private _getCurrentUser?: GetCurrentUser;
   private _updateUserProfile?: UpdateUserProfile; // <--- NUEVA PROPIEDAD
+  // ✅ NUEVO USE CASE
+    public sendPasswordResetEmail!: SendPasswordResetEmail;
 
   private constructor() {}
 
@@ -45,6 +47,8 @@ class DIContainer {
     this._dataSource = new FirebaseTodoDataSource();
     await this._dataSource.initialize();
     this._repository = new TodoRepositoryFirebaseImpl(this._dataSource);
+    // ✅ INICIALIZACIÓN DE SendPasswordResetEmail
+        this.sendPasswordResetEmail = new SendPasswordResetEmail(this.authRepository);
   }
 
   // 🟢 Getters para Tareas
@@ -108,6 +112,7 @@ class DIContainer {
     } 
     return this._updateUserProfile; 
   } 
+  
 } 
  
 export const container = DIContainer.getInstance();

@@ -19,4 +19,7 @@ onAuthStateChanged(callback: (user: User | null) => void): () => void;
      * @param displayName Nuevo nombre a establecer.
      */
     updateProfile(displayName: string): Promise<void>;
+
+    // ✅ NUEVO MÉTODO
+    sendPasswordResetEmail(email: string): Promise<void>;
 }

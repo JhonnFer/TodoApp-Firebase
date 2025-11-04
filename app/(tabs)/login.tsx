@@ -1,37 +1,42 @@
 import React, { useState } from "react"; 
 import { 
-View, 
-Text, 
-TextInput, 
-TouchableOpacity, 
-StyleSheet, 
-Alert, 
-ActivityIndicator, 
-KeyboardAvoidingView, 
-Platform, 
-ScrollView, 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert, 
+  ActivityIndicator, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
 } from "react-native"; 
 import { useAuth } from "@/src/presentation/hooks/useAuth"; 
 import { useRouter } from "expo-router"; 
+
 export default function LoginScreen() { 
-const [email, setEmail] = useState(""); 
-const [password, setPassword] = useState(""); 
-const { login, loading, error } = useAuth(); 
-const router = useRouter(); 
-const handleLogin = async () => { 
-const success = await login(email, password); 
-if (success) { 
-router.replace("/(tabs)/todos"); 
-} else { 
-Alert.alert("Error", error || "No se pudo iniciar sesión"); 
-} 
-}; 
-const goToRegister = () => { 
-router.push("/(tabs)/register"); 
-}; 
-return ( 
-<KeyboardAvoidingView 
-style={styles.container} 
+  const [email, setEmail] = useState(""); 
+  const [password, setPassword] = useState(""); 
+  const { login, loading, error } = useAuth(); 
+  const router = useRouter(); 
+
+  const handleLogin = async () => { 
+    const success = await login(email, password); 
+    if (success) { 
+      router.replace("/(tabs)/todos"); 
+    } else { 
+      // Mostramos el error si el login falla (ej. credenciales inválidas)
+      Alert.alert("Error", error || "No se pudo iniciar sesión"); 
+    } 
+  }; 
+
+  const goToRegister = () => { 
+    router.push("/(tabs)/register"); 
+  }; 
+
+  return ( 
+    <KeyboardAvoidingView 
+      style={styles.container} 
       behavior={Platform.OS === "ios" ? "padding" : "height"} 
     > 
       <ScrollView 
@@ -41,7 +46,7 @@ style={styles.container}
         <View style={styles.content}> 
           <Text style={styles.title}>📝 TodoApp</Text> 
           <Text style={styles.subtitle}>Iniciar Sesión</Text> 
- 
+          
           <TextInput 
             style={styles.input} 
             placeholder="Email" 
@@ -51,7 +56,7 @@ style={styles.container}
             autoCapitalize="none" 
             autoCorrect={false} 
           /> 
- 
+
           <TextInput 
             style={styles.input} 
             placeholder="Contraseña" 
@@ -59,7 +64,7 @@ style={styles.container}
             onChangeText={setPassword} 
             secureTextEntry 
           /> 
- 
+
           <TouchableOpacity 
             style={[styles.button, loading && styles.buttonDisabled]} 
             onPress={handleLogin} 
@@ -71,20 +76,28 @@ style={styles.container}
               <Text style={styles.buttonText}>Entrar</Text> 
             )} 
           </TouchableOpacity> 
- 
-          <TouchableOpacity onPress={goToRegister} 
-style={styles.linkButton}> 
+          
+          {/* ✅ ENLACE: Olvidé mi contraseña (Antes de Regístrate) */}
+          <TouchableOpacity 
+            onPress={() => router.push("/forgot-password")} 
+            style={styles.forgotPasswordLink}
+          >
+            <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+          </TouchableOpacity>
+          
+          {/* ENLACE: Regístrate (Se quitó la duplicación al final) */}
+          <TouchableOpacity onPress={goToRegister} style={styles.linkButton}> 
             <Text style={styles.linkText}> 
-              ¿No tienes cuenta? <Text 
-style={styles.linkTextBold}>Regístrate</Text> 
+              ¿No tienes cuenta? <Text style={styles.linkTextBold}>Regístrate</Text> 
             </Text> 
           </TouchableOpacity> 
+
         </View> 
       </ScrollView> 
     </KeyboardAvoidingView> 
   ); 
 } 
- 
+
 const styles = StyleSheet.create({ 
   container: { 
     flex: 1, 
@@ -138,13 +151,24 @@ const styles = StyleSheet.create({
     marginTop: 20, 
     padding: 10, 
   }, 
-linkText: { 
-color: "#666", 
-textAlign: "center", 
-fontSize: 16, 
-}, 
-linkTextBold: { 
-color: "#007AFF", 
-fontWeight: "bold", 
-}, 
-}); 
+  linkText: { 
+    color: "#666", 
+    textAlign: "center", 
+    fontSize: 16, 
+  }, 
+  linkTextBold: { 
+    color: "#007AFF", 
+    fontWeight: "bold", 
+  },
+  // ✅ NUEVOS ESTILOS PARA EL ENLACE DE RECUPERACIÓN
+  forgotPasswordLink: {
+    marginTop: 5, // Ajustado para que no esté pegado al botón
+    padding: 5,
+  },
+  forgotPasswordText: {
+    color: '#007AFF', // Usamos el color primario
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});

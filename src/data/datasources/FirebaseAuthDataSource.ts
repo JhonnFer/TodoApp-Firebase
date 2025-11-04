@@ -6,6 +6,7 @@ import {
   updateProfile,
   User as FirebaseUser,
   getAuth,
+  sendPasswordResetEmail,
 } from "firebase/auth";
 import {
   getFirestore,
@@ -119,6 +120,27 @@ export class FirebaseAuthDataSource {
       }
 
       throw new Error(error.message || "Error al iniciar sesión");
+    }
+  }
+  // ===== MÉTODO DE RECUPERACIÓN DE CONTRASEÑA =====
+async sendPasswordResetEmail(email: string): Promise<void> {
+    try {
+        const auth = getAuth(); // Asumiendo que obtienes la instancia de auth aquí o de Firebaseconfig
+        await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+        console.error("Error sending password reset email:", error);
+        
+        // Manejo de errores específicos
+        if (error.code === "auth/user-not-found") {
+            // Por seguridad, Firebase recomienda no indicar si el email existe o no.
+            // Pero lanzamos un error claro para el flujo del usuario.
+            throw new Error("Usuario no encontrado.");
+        } else if (error.code === "auth/invalid-email") {
+             // Aunque el Use Case valida el formato, la API podría lanzar esto.
+            throw new Error("Email inválido según el servicio.");
+        }
+
+        throw new Error("Error al enviar el correo de recuperación. Intenta más tarde.");
     }
   }
 
