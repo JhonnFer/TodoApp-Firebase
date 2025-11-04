@@ -20,6 +20,9 @@ return this.dataSource.logout();
 async getCurrentUser(): Promise<User | null> { 
 return this.dataSource.getCurrentUser(); 
 } 
+async updateProfile(displayName: string): Promise<void> {
+        return this.dataSource.updateProfile(displayName);
+    }
 onAuthStateChanged(callback: (user: User | null) => void): () => void { 
 return this.dataSource.onAuthStateChanged(callback); 
 } 

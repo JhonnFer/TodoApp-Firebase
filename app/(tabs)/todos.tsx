@@ -1,8 +1,10 @@
-// 🟢 NUEVA VERSION: UI completamente desacoplada de la base de datos
+// app/(tabs)/todos.tsx
+
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useRouter } from "expo-router";
 import { useTodos } from "@/src/presentation/hooks/useTodos";
-import { createStyles, defaultLightTheme, defaultDarkTheme } from "@/src/presentation/styles/todos.styles";
+// Asegúrate de que las rutas de estilos sean correctas:
+import { createStyles, defaultLightTheme, defaultDarkTheme } from "@/src/presentation/styles/todos.styles"; 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import React, { useState, useMemo } from "react";
 import {
@@ -20,9 +22,9 @@ import {
 export default function TodosScreenClean() {
   const [inputText, setInputText] = useState("");
   const { todos, loading, addTodo, toggleTodo, deleteTodo } = useTodos();
-  // ← NUEVAS LÍNEAS 
-  const { user, logout } = useAuth();
+  const { user } = useAuth(); // Se elimina 'logout'
   const router = useRouter();
+
   // 🎨 Detectar tema y crear estilos dinámicamente
   const colorScheme = useColorScheme();
   const styles = useMemo(
@@ -33,7 +35,8 @@ export default function TodosScreenClean() {
   const handleAddTodo = async () => {
     if (!inputText.trim()) return;
 
-    const success = await addTodo(inputText);
+    // Ya no necesitas verificar el usuario aquí, useTodos debería hacerlo.
+    const success = await addTodo(inputText); 
     if (success) {
       setInputText("");
     }
@@ -76,29 +79,29 @@ export default function TodosScreenClean() {
       </TouchableOpacity>
     </View>
   );
-  // ← NUEVA FUNCIÓN 
-  const handleLogout = async () => {
-    const success = await logout();
-    if (success) {
-      router.replace("/(tabs)/login");
-    }
-  };
+
+  // NOTA: handleLogout fue eliminado de este archivo.
+
   return (
     <View style={styles.container}>
-      {/* NUEVO HEADER CON INFO DE USUARIO */}
+      {/* NUEVO HEADER SIMPLIFICADO con navegación a Perfil */}
       <View style={styles.header}>
         <View style={styles.userAvatarPlaceholder}>
           <Text style={styles.userAvatarText}>
             {user?.displayName?.charAt(0) || "U"}
           </Text>
         </View>
-        <Text style={styles.userName}>{user?.displayName ||
-          "Usuario"}</Text>
-        <TouchableOpacity onPress={handleLogout}
-          style={styles.logoutButton}>
-          <Text style={styles.logoutText}>Salir</Text>
+        <Text style={styles.userName}>Hola, {user?.displayName || "Usuario"}</Text>
+        
+        {/* BOTÓN PARA NAVEGAR A PERFIL */}
+        <TouchableOpacity 
+            onPress={() => router.push("/(tabs)/profile")}
+            style={styles.profileButton}
+        >
+          <Text style={styles.profileButtonText}>👤 Perfil</Text>
         </TouchableOpacity>
       </View>
+
       <Text style={styles.title}>Mis Tareas (Clean)</Text>
 
       <View style={styles.inputContainer}>

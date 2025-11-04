@@ -14,4 +14,9 @@ logout(): Promise<void>;
 getCurrentUser(): Promise<User | null>; 
 // Escuchar cambios de autenticación (observer pattern) 
 onAuthStateChanged(callback: (user: User | null) => void): () => void; 
-} 
+/**
+     * Actualiza el perfil del usuario autenticado.
+     * @param displayName Nuevo nombre a establecer.
+     */
+    updateProfile(displayName: string): Promise<void>;
+}
