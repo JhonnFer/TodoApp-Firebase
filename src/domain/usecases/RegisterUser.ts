@@ -8,12 +8,17 @@ password: string,
 displayName: string 
 ): Promise<User> { 
 // 🟢 VALIDACIONES DE NEGOCIO 
+// 1. Añade este log para ver qué valor y longitud recibe
+console.log(`[DOMINIO] Email recibido: ${email}`);
+console.log(`[DOMINIO] Password recibido: ${password} (Longitud: ${password.length})`);
+
 if (!email || !password || !displayName) { 
 throw new Error("Todos los campos son requeridos"); 
 } 
 if (password.length < 6) { 
-throw new Error("La contraseña debe tener al menos 6 caracteres"); 
-} 
+    console.log("[DOMINIO] Lanzando error de contraseña corta."); // 2. Log de éxito de validación
+    throw new Error("La contraseña debe tener al menos 6 caracteres"); 
+}
 if (displayName.trim().length < 2) { 
 throw new Error("El nombre debe tener al menos 2 caracteres"); 
 } 

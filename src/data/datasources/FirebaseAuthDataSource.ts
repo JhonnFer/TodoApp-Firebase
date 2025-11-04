@@ -11,16 +11,19 @@ import {
   getFirestore,
   doc,
   updateDoc,
-  setDoc, // <--- ¡AÑADIR ESTO! (Necesario para register)
-  getDoc,
-} from "firebase/firestore"; // Asegúrate de importar los métodos de Firestore
+  setDoc, // Necesario para guardar en Firestore después del registro
+  getDoc,  // Necesario para leer de Firestore después del login
+} from "firebase/firestore";
 import { auth, db } from "@/Firebaseconfig";
 import { User } from "@/src/domain/entities/User";
-import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry";
+// ❌ ELIMINAR: import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry"; 
 
 export class FirebaseAuthDataSource {
-  private auth = getAuth();
-  private db = getFirestore();
+  // Usamos las instancias importadas de Firebaseconfig.ts,
+  // por lo que estas líneas de inicialización son redundantes.
+  // private auth = getAuth();
+  // private db = getFirestore();
+
   // ===== MÉTODO PRIVADO: CONVERTIR FIREBASEUSER A USER =====
   private mapFirebaseUserToUser(firebaseUser: FirebaseUser): User {
     return {
@@ -31,7 +34,7 @@ export class FirebaseAuthDataSource {
     };
   }
 
-  // ===== REGISTRO DE USUARIO =====
+  // ===== REGISTRO DE USUARIO (Manejo de Errores Específicos) =====
   async register(
     email: string,
     password: string,
@@ -59,6 +62,7 @@ export class FirebaseAuthDataSource {
       });
 
       // 4. Retornar usuario mapeado
+      // Usamos el displayName actualizado
       return {
         id: firebaseUser.uid,
         email,
@@ -68,20 +72,21 @@ export class FirebaseAuthDataSource {
     } catch (error: any) {
       console.error("Error registering user:", error);
 
-      // Mensajes de error más amigables
+      // 🟢 CAPTURA Y CONVERSIÓN DE ERRORES DE FIREBASE A MENSAJES DE NEGOCIO
       if (error.code === "auth/email-already-in-use") {
-        throw new Error("Este email ya está registrado");
+        // ✅ Error específico solicitado: El mensaje que se le mostrará al usuario.
+        throw new Error("Este email ya está registrado. Por favor, inicia sesión.");
       } else if (error.code === "auth/invalid-email") {
-        throw new Error("Email inválido");
+        throw new Error("El email proporcionado no es válido.");
       } else if (error.code === "auth/weak-password") {
-        throw new Error("La contraseña es muy débil");
+        throw new Error("La contraseña es muy débil (mínimo 6 caracteres).");
       }
 
-      throw new Error(error.message || "Error al registrar usuario");
+      throw new Error(error.message || "Error desconocido al registrar usuario");
     }
   }
 
-  // ===== LOGIN =====
+  // ===== LOGIN (Manejo de Errores Específicos) =====
   async login(email: string, password: string): Promise<User> {
     try {
       // 1. Autenticar con Firebase Auth
@@ -108,12 +113,9 @@ export class FirebaseAuthDataSource {
       console.error("Error logging in:", error);
 
       // Mensajes de error más amigables
-      if (error.code === "auth/user-not-found") {
-        throw new Error("Usuario no encontrado");
-      } else if (error.code === "auth/wrong-password") {
-        throw new Error("Contraseña incorrecta");
-      } else if (error.code === "auth/invalid-credential") {
-        throw new Error("Credenciales inválidas");
+      if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
+        // En login, a menudo se usa un mensaje genérico por seguridad
+        throw new Error("Credenciales inválidas. Por favor, verifica tu email y contraseña.");
       }
 
       throw new Error(error.message || "Error al iniciar sesión");
@@ -142,8 +144,10 @@ export class FirebaseAuthDataSource {
       return null;
     }
   }
+
+  // ===== ACTUALIZAR PERFIL =====
   async updateProfile(displayName: string): Promise<void> {
-    const user = this.auth.currentUser;
+    const user = auth.currentUser; // Usamos 'auth' importado
 
     if (!user) {
       throw new Error("Usuario no autenticado para actualizar el perfil.");
@@ -153,12 +157,13 @@ export class FirebaseAuthDataSource {
     await updateProfile(user, { displayName });
 
     // 2. Actualizar en Firestore (colección 'users')
-    const userRef = doc(this.db, "users", user.uid);
+    const userRef = doc(db, "users", user.uid); // Usamos 'db' importado
     await updateDoc(userRef, {
       displayName: displayName,
-      updatedAt: new Date().toISOString(), // O timestamp de Firestore
+      updatedAt: new Date().toISOString(),
     });
   }
+
   // ===== OBSERVAR CAMBIOS DE AUTENTICACIÓN =====
   onAuthStateChanged(callback: (user: User | null) => void): () => void {
     // Retorna función de desuscripción

@@ -1,42 +1,46 @@
 import React, { useState } from "react"; 
 import { 
-View, 
-Text, 
-TextInput, 
-TouchableOpacity, 
-StyleSheet, 
-Alert, 
-ActivityIndicator, 
-KeyboardAvoidingView, 
-Platform, 
-ScrollView, 
+  View, 
+  Text, 
+  TextInput, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert, 
+  ActivityIndicator, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView, 
 } from "react-native"; 
 import { useAuth } from "@/src/presentation/hooks/useAuth"; 
 import { useRouter } from "expo-router"; 
+
 export default function RegisterScreen() { 
-const [email, setEmail] = useState(""); 
-const [password, setPassword] = useState(""); 
-const [displayName, setDisplayName] = useState(""); 
-const { register, loading, error } = useAuth(); 
-const router = useRouter(); 
-const handleRegister = async () => { 
-const success = await register(email, password, displayName); 
-if (success) { 
+  const [email, setEmail] = useState(""); 
+  const [password, setPassword] = useState(""); 
+  const [displayName, setDisplayName] = useState(""); 
+  const { register, loading, error } = useAuth(); // Capturamos el estado 'error'
+  const router = useRouter(); 
+
+  const handleRegister = async () => { 
+    // Al fallar, el hook useAuth() setea el estado 'error'.
+    const success = await register(email, password, displayName); 
+    
+    if (success) { 
       Alert.alert("Éxito", "Usuario registrado correctamente", [ 
         { 
           text: "OK", 
           onPress: () => router.replace("/(tabs)/todos"), 
         }, 
       ]); 
-    } else { 
-      Alert.alert("Error", error || "No se pudo registrar el usuario"); 
     } 
+    // 🛑 Bloque 'else' con Alert.alert ELIMINADO.
+    // El error ahora se maneja mostrando el componente {errorBox}
   }; 
- 
+  
   const goToLogin = () => { 
     router.back(); 
   }; 
- 
+  
   return ( 
     <KeyboardAvoidingView 
       style={styles.container} 
@@ -48,14 +52,22 @@ if (success) {
       > 
         <View style={styles.content}> 
           <Text style={styles.title}>Crear Cuenta</Text> 
- 
+
+          {/* ✅ NUEVO BLOQUE: Muestra el error de forma persistente */}
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+          {/* FIN NUEVO BLOQUE */}
+
           <TextInput 
             style={styles.input} 
             placeholder="Nombre completo" 
             value={displayName} 
             onChangeText={setDisplayName} 
           /> 
- 
+
           <TextInput 
             style={styles.input} 
             placeholder="Email" 
@@ -65,7 +77,7 @@ if (success) {
             autoCapitalize="none" 
             autoCorrect={false} 
           /> 
- 
+
           <TextInput 
             style={styles.input} 
             placeholder="Contraseña (mínimo 6 caracteres)" 
@@ -73,7 +85,7 @@ if (success) {
             onChangeText={setPassword} 
             secureTextEntry 
           /> 
- 
+
           <TouchableOpacity 
             style={[styles.button, loading && styles.buttonDisabled]} 
             onPress={handleRegister} 
@@ -85,11 +97,11 @@ if (success) {
               <Text style={styles.buttonText}>Crear Cuenta</Text> 
             )} 
           </TouchableOpacity> 
- 
+
           <TouchableOpacity onPress={goToLogin} style={styles.linkButton}> 
             <Text style={styles.linkText}> 
               ¿Ya tienes cuenta? <Text style={styles.linkTextBold}>Inicia 
-sesión</Text> 
+              sesión</Text> 
             </Text> 
           </TouchableOpacity> 
         </View> 
@@ -97,7 +109,7 @@ sesión</Text>
     </KeyboardAvoidingView> 
   ); 
 } 
- 
+ 
 const styles = StyleSheet.create({ 
   container: { 
     flex: 1, 
@@ -128,30 +140,45 @@ const styles = StyleSheet.create({
   }, 
   button: { 
     backgroundColor: "#34C759", 
-padding: 15, 
-borderRadius: 10, 
-alignItems: "center", 
-marginTop: 10, 
-}, 
-buttonDisabled: { 
-backgroundColor: "#999", 
-}, 
-buttonText: { 
-color: "#fff", 
-fontSize: 18, 
-fontWeight: "bold", 
-}, 
-linkButton: { 
-marginTop: 20, 
-padding: 10, 
-}, 
-linkText: { 
-color: "#666", 
-textAlign: "center", 
-fontSize: 16, 
-}, 
-linkTextBold: { 
-color: "#007AFF", 
-fontWeight: "bold", 
-}, 
-}); 
+    padding: 15, 
+    borderRadius: 10, 
+    alignItems: "center", 
+    marginTop: 10, 
+  }, 
+  buttonDisabled: { 
+    backgroundColor: "#999", 
+  }, 
+  buttonText: { 
+    color: "#fff", 
+    fontSize: 18, 
+    fontWeight: "bold", 
+  }, 
+  linkButton: { 
+    marginTop: 20, 
+    padding: 10, 
+  }, 
+  linkText: { 
+    color: "#666", 
+    textAlign: "center", 
+    fontSize: 16, 
+  }, 
+  linkTextBold: { 
+    color: "#007AFF", 
+    fontWeight: "bold", 
+  },
+  // ✅ NUEVOS ESTILOS PARA EL CUADRO DE ERROR
+  errorBox: {
+    backgroundColor: '#FFEEEE', // Fondo rojo claro
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 20,
+    borderLeftWidth: 5,
+    borderLeftColor: '#CC0000', // Barra roja
+  },
+  errorText: {
+    color: '#CC0000', // Texto rojo oscuro
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  // FIN NUEVOS ESTILOS
+});
