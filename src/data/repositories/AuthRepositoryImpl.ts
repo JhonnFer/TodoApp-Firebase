@@ -4,7 +4,7 @@ import { FirebaseAuthDataSource } from
 "../datasources/FirebaseAuthDataSource"; 
 
 export class AuthRepositoryImpl implements AuthRepository { 
-    // ✅ La propiedad se define aquí como 'dataSource'
+    // ✅ Se inyecta la dependencia (Fuente de Datos)
     constructor(private dataSource: FirebaseAuthDataSource) {} 
 
     async register( 
@@ -23,7 +23,9 @@ export class AuthRepositoryImpl implements AuthRepository {
         return this.dataSource.logout(); 
     } 
 
+    // 🛑 MÉTODO CRÍTICO para Persistencia de Sesión
     async getCurrentUser(): Promise<User | null> { 
+        // Delega la verificación de la sesión (Firebase/AsyncStorage) a la Fuente de Datos
         return this.dataSource.getCurrentUser(); 
     } 
 
@@ -31,12 +33,11 @@ export class AuthRepositoryImpl implements AuthRepository {
         return this.dataSource.updateProfile(displayName);
     }
     
-    // ✅ MÉTODO DE RECUPERACIÓN DE CONTRASEÑA CORREGIDO
     async sendPasswordResetEmail(email: string): Promise<void> {
-        // 🚀 Corregido: Usar this.dataSource en lugar de this.authDataSource
         return this.dataSource.sendPasswordResetEmail(email); 
     }
 
+    // 🛑 MÉTODO CRÍTICO para el Listener de Sesión en React
     onAuthStateChanged(callback: (user: User | null) => void): () => void { 
         return this.dataSource.onAuthStateChanged(callback); 
     } 

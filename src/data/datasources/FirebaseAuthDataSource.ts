@@ -12,19 +12,18 @@ import {
   getFirestore,
   doc,
   updateDoc,
-  setDoc, // Necesario para guardar en Firestore después del registro
-  getDoc,  // Necesario para leer de Firestore después del login
+  setDoc, 
+  getDoc, 
 } from "firebase/firestore";
 import { auth, db } from "@/Firebaseconfig";
 import { User } from "@/src/domain/entities/User";
-// ❌ ELIMINAR: import { get } from "react-native/Libraries/TurboModule/TurboModuleRegistry"; 
+
+// 🚀 NUEVO: Importación de AsyncStorage para la persistencia
+import AsyncStorage from "@react-native-async-storage/async-storage"; 
+
+const USER_SESSION_KEY = "user_session_id"; // Clave para AsyncStorage
 
 export class FirebaseAuthDataSource {
-  // Usamos las instancias importadas de Firebaseconfig.ts,
-  // por lo que estas líneas de inicialización son redundantes.
-  // private auth = getAuth();
-  // private db = getFirestore();
-
   // ===== MÉTODO PRIVADO: CONVERTIR FIREBASEUSER A USER =====
   private mapFirebaseUserToUser(firebaseUser: FirebaseUser): User {
     return {
@@ -34,15 +33,24 @@ export class FirebaseAuthDataSource {
       createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
     };
   }
+    
+  // 🚀 NUEVO: Manejo de AsyncStorage
+  private async saveSession(userId: string): Promise<void> {
+      await AsyncStorage.setItem(USER_SESSION_KEY, userId);
+  }
 
-  // ===== REGISTRO DE USUARIO (Manejo de Errores Específicos) =====
+  // 🚀 NUEVO: Manejo de AsyncStorage
+  private async clearSession(): Promise<void> {
+      await AsyncStorage.removeItem(USER_SESSION_KEY);
+  }
+
+  // ===== REGISTRO DE USUARIO =====
   async register(
     email: string,
     password: string,
     displayName: string
   ): Promise<User> {
     try {
-      // 1. Crear usuario en Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         email,
@@ -50,20 +58,19 @@ export class FirebaseAuthDataSource {
       );
       const firebaseUser = userCredential.user;
 
-      // 2. Actualizar perfil en Auth (displayName)
       await updateProfile(firebaseUser, {
         displayName,
       });
 
-      // 3. Guardar datos adicionales en Firestore
       await setDoc(doc(db, "users", firebaseUser.uid), {
         email,
         displayName,
         createdAt: new Date(),
       });
+        
+      // 🛑 PERSISTENCIA DE SESIÓN
+      await this.saveSession(firebaseUser.uid);
 
-      // 4. Retornar usuario mapeado
-      // Usamos el displayName actualizado
       return {
         id: firebaseUser.uid,
         email,
@@ -72,25 +79,20 @@ export class FirebaseAuthDataSource {
       };
     } catch (error: any) {
       console.error("Error registering user:", error);
-
-      // 🟢 CAPTURA Y CONVERSIÓN DE ERRORES DE FIREBASE A MENSAJES DE NEGOCIO
       if (error.code === "auth/email-already-in-use") {
-        // ✅ Error específico solicitado: El mensaje que se le mostrará al usuario.
         throw new Error("Este email ya está registrado. Por favor, inicia sesión.");
       } else if (error.code === "auth/invalid-email") {
         throw new Error("El email proporcionado no es válido.");
       } else if (error.code === "auth/weak-password") {
         throw new Error("La contraseña es muy débil (mínimo 6 caracteres).");
       }
-
       throw new Error(error.message || "Error desconocido al registrar usuario");
     }
   }
 
-  // ===== LOGIN (Manejo de Errores Específicos) =====
+  // ===== LOGIN =====
   async login(email: string, password: string): Promise<User> {
     try {
-      // 1. Autenticar con Firebase Auth
       const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
@@ -98,11 +100,12 @@ export class FirebaseAuthDataSource {
       );
       const firebaseUser = userCredential.user;
 
-      // 2. Obtener datos adicionales de Firestore
       const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
       const userData = userDoc.data();
+        
+      // 🛑 PERSISTENCIA DE SESIÓN
+      await this.saveSession(firebaseUser.uid);
 
-      // 3. Retornar usuario completo
       return {
         id: firebaseUser.uid,
         email: firebaseUser.email || "",
@@ -111,65 +114,75 @@ export class FirebaseAuthDataSource {
         createdAt: userData?.createdAt?.toDate() || new Date(),
       };
     } catch (error: any) {
-      console.error("Error logging in:", error);
-
-      // Mensajes de error más amigables
       if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
-        // En login, a menudo se usa un mensaje genérico por seguridad
         throw new Error("Credenciales inválidas. Por favor, verifica tu email y contraseña.");
       }
-
       throw new Error(error.message || "Error al iniciar sesión");
-    }
-  }
-  // ===== MÉTODO DE RECUPERACIÓN DE CONTRASEÑA =====
-async sendPasswordResetEmail(email: string): Promise<void> {
-    try {
-        const auth = getAuth(); // Asumiendo que obtienes la instancia de auth aquí o de Firebaseconfig
-        await sendPasswordResetEmail(auth, email);
-    } catch (error: any) {
-        console.error("Error sending password reset email:", error);
-        
-        // Manejo de errores específicos
-        if (error.code === "auth/user-not-found") {
-            // Por seguridad, Firebase recomienda no indicar si el email existe o no.
-            // Pero lanzamos un error claro para el flujo del usuario.
-            throw new Error("Usuario no encontrado.");
-        } else if (error.code === "auth/invalid-email") {
-             // Aunque el Use Case valida el formato, la API podría lanzar esto.
-            throw new Error("Email inválido según el servicio.");
-        }
-
-        throw new Error("Error al enviar el correo de recuperación. Intenta más tarde.");
     }
   }
 
   // ===== LOGOUT =====
   async logout(): Promise<void> {
     try {
+      // 🛑 PERSISTENCIA DE SESIÓN
+      await this.clearSession(); 
       await signOut(auth);
     } catch (error: any) {
       console.error("Error logging out:", error);
       throw new Error(error.message || "Error al cerrar sesión");
     }
   }
-
-  // ===== OBTENER USUARIO ACTUAL =====
-  async getCurrentUser(): Promise<User | null> {
+    
+  // ===== MÉTODO DE RECUPERACIÓN DE CONTRASEÑA =====
+  async sendPasswordResetEmail(email: string): Promise<void> {
     try {
-      const firebaseUser = auth.currentUser;
-      if (!firebaseUser) return null;
+        // Usamos el 'auth' importado
+        await sendPasswordResetEmail(auth, email);
+    } catch (error: any) {
+        console.error("Error sending password reset email:", error);
+        if (error.code === "auth/user-not-found") {
+            throw new Error("Usuario no encontrado.");
+        } else if (error.code === "auth/invalid-email") {
+            throw new Error("Email inválido según el servicio.");
+        }
+        throw new Error("Error al enviar el correo de recuperación. Intenta más tarde.");
+    }
+  }
 
-      return this.mapFirebaseUserToUser(firebaseUser);
+  // ===== OBTENER USUARIO ACTUAL (CLAVE PARA PERSISTENCIA) =====
+  async getCurrentUser(): Promise<User | null> {
+    const firebaseUser = auth.currentUser;
+    
+    try {
+        // 1. Verificar si Firebase Auth ya tiene la sesión
+        if (firebaseUser) {
+            return this.mapFirebaseUserToUser(firebaseUser);
+        }
+
+        // 2. Si Firebase no lo detectó, verificamos AsyncStorage.
+        // Esto es útil si el hook se llama muy rápido antes de que Firebase inicie.
+        const userIdFromStorage = await AsyncStorage.getItem(USER_SESSION_KEY);
+        
+        // Si no hay nada persistido, no hay sesión.
+        if (!userIdFromStorage) {
+            return null;
+        }
+
+        // Si hay un ID en AsyncStorage, pero `auth.currentUser` es nulo, significa que
+        // el token de Firebase está en proceso de carga o es inválido.
+        // Devolvemos null aquí y confiamos en el listener (`onAuthStateChanged`)
+        // para obtener el usuario tan pronto como Firebase termine de inicializar.
+        return null; 
     } catch (error) {
-      console.error("Error getting current user:", error);
-      return null;
+        console.error("Error al obtener el usuario actual o AsyncStorage falló:", error);
+        await this.clearSession(); 
+        return null;
     }
   }
 
   // ===== ACTUALIZAR PERFIL =====
   async updateProfile(displayName: string): Promise<void> {
-    const user = auth.currentUser; // Usamos 'auth' importado
+    const user = auth.currentUser; 
 
     if (!user) {
       throw new Error("Usuario no autenticado para actualizar el perfil.");
@@ -179,20 +192,31 @@ async sendPasswordResetEmail(email: string): Promise<void> {
     await updateProfile(user, { displayName });
 
     // 2. Actualizar en Firestore (colección 'users')
-    const userRef = doc(db, "users", user.uid); // Usamos 'db' importado
+    const userRef = doc(db, "users", user.uid); 
     await updateDoc(userRef, {
       displayName: displayName,
       updatedAt: new Date().toISOString(),
     });
   }
 
-  // ===== OBSERVAR CAMBIOS DE AUTENTICACIÓN =====
+  // ===== OBSERVAR CAMBIOS DE AUTENTICACIÓN (CLAVE PARA useAuth) =====
   onAuthStateChanged(callback: (user: User | null) => void): () => void {
-    // Retorna función de desuscripción
-    return firebaseOnAuthStateChanged(auth, (firebaseUser) => {
+    // Este listener se dispara cuando la sesión se carga por persistencia.
+    return firebaseOnAuthStateChanged(auth, async (firebaseUser) => { // Usamos 'async'
       if (firebaseUser) {
-        callback(this.mapFirebaseUserToUser(firebaseUser));
+          // 🛑 PERSISTENCIA DE SESIÓN: Si el listener detecta un usuario (por persistencia), 
+          // aseguramos que el ID esté en AsyncStorage (aunque Firebase lo maneja, esto es por robustez).
+          await this.saveSession(firebaseUser.uid);
+
+          // 1. Mapear el usuario de Firebase Auth
+          const mappedUser = this.mapFirebaseUserToUser(firebaseUser);
+          
+          // 2. Opcional: obtener datos de Firestore si se necesitan (ya está hecho en login/register)
+          // Para evitar llamadas a DB innecesarias, solo devolvemos el mapeado simple.
+          callback(mappedUser);
       } else {
+          // 🛑 PERSISTENCIA DE SESIÓN: Si el listener detecta un usuario nulo (logout o token expirado)
+          await this.clearSession();
         callback(null);
       }
     });
