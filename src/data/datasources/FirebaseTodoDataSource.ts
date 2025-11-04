@@ -8,7 +8,7 @@ updateDoc,
 deleteDoc, 
 query, 
   orderBy, 
-  where, // ← NUEVO: para filtrar por userId 
+  where, 
   Timestamp, 
 } from "firebase/firestore"; 
 import { db } from "@/Firebaseconfig"; 
@@ -21,11 +21,10 @@ export class FirebaseTodoDataSource {
     console.log("Firebase initialized"); 
   } 
  
-  // ← MODIFICADO: ahora filtra por userId 
   async getAllTodos(userId: string): Promise<Todo[]> { 
     const q = query( 
       collection(db, this.collectionName), 
-      where("userId", "==", userId), // ← NUEVO: solo tareas del usuario 
+      where("userId", "==", userId), 
       orderBy("createdAt", "desc") 
     ); 
  
@@ -38,7 +37,7 @@ export class FirebaseTodoDataSource {
         title: data.title, 
         completed: data.completed, 
         createdAt: data.createdAt.toDate(), 
-        userId: data.userId, // ← NUEVO 
+        userId: data.userId, 
       }; 
     }); 
   } 
@@ -55,17 +54,16 @@ export class FirebaseTodoDataSource {
       title: data.title, 
       completed: data.completed, 
       createdAt: data.createdAt.toDate(), 
-      userId: data.userId, // ← NUEVO 
+      userId: data.userId, 
     }; 
   } 
  
-  // ← MODIFICADO: ahora recibe title y userId 
   async createTodo(title: string, userId: string): Promise<Todo> { 
     const newTodo = { 
       title, 
       completed: false, 
       createdAt: Timestamp.now(), 
-      userId, // ← NUEVO: guardar el userId 
+      userId, 
     }; 
  
     const docRef = await addDoc(collection(db, this.collectionName), 
@@ -76,22 +74,39 @@ newTodo);
       title, 
       completed: false, 
       createdAt: new Date(), 
-      userId, // ← NUEVO 
+      userId, 
     }; 
   } 
  
+  // 🚀 CORRECCIÓN EN updateTodo
   async updateTodo( 
     id: string, 
     completed?: boolean, 
-    title?: string 
+    title?: string,
+    userId?: string // ⬅️ NUEVO: ACEPTAR EL ID DE USUARIO
   ): Promise<Todo> { 
     const docRef = doc(db, this.collectionName, id); 
  
+    // 1. Verificar la propiedad antes de actualizar
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+        throw new Error("Tarea no encontrada.");
+    }
+
+    const taskData = docSnap.data();
+    // 🚨 VERIFICACIÓN DE SEGURIDAD
+    if (userId && taskData.userId !== userId) {
+        // Aunque el Dominio ya validó, esta es la última línea de defensa
+        throw new Error("Acción no autorizada. No eres el dueño de esta tarea.");
+    }
+    
     const updates: any = {}; 
     if (completed !== undefined) updates.completed = completed; 
     if (title !== undefined) updates.title = title; 
  
-    await updateDoc(docRef, updates); 
+    if (Object.keys(updates).length > 0) {
+        await updateDoc(docRef, updates); 
+    }
  
     const updated = await this.getTodoById(id); 
     if (!updated) throw new Error("Todo not found after update"); 
@@ -99,8 +114,24 @@ newTodo);
     return updated; 
   } 
  
-  async deleteTodo(id: string): Promise<void> { 
+  // 🚀 CORRECCIÓN EN deleteTodo
+  async deleteTodo(id: string, userId: string): Promise<void> { // ⬅️ NUEVO: ACEPTAR EL ID DE USUARIO
     const docRef = doc(db, this.collectionName, id); 
+
+    // 1. Verificar la propiedad antes de eliminar
+    const docSnap = await getDoc(docRef);
+    if (!docSnap.exists()) {
+        // Si no existe, no hay nada que eliminar, podemos salir sin error
+        return;
+    }
+
+    const taskData = docSnap.data();
+    // 🚨 VERIFICACIÓN DE SEGURIDAD
+    if (taskData.userId !== userId) {
+        throw new Error("Acción no autorizada. No puedes eliminar la tarea de otro usuario.");
+    }
+    
+    // 2. Ejecutar la eliminación
     await deleteDoc(docRef); 
   } 
-} 
+}

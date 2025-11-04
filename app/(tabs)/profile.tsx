@@ -42,7 +42,7 @@ export default function ProfileScreen() {
             if (success) {
                 Alert.alert("Éxito", "Perfil actualizado correctamente. 🎉");
             } else {
-                 Alert.alert("Error", "No se pudo actualizar el perfil. Intenta de nuevo.");
+                Alert.alert("Error", "No se pudo actualizar el perfil. Intenta de nuevo.");
             }
         } catch (error) {
              Alert.alert("Error", "Ocurrió un error inesperado al actualizar.");
@@ -53,12 +53,23 @@ export default function ProfileScreen() {
     
     // Función para cerrar la sesión
     const handleLogout = async () => {
-        await logout();
-        // Redirige a la pantalla pública
-        router.replace('/(tabs)/login'); 
+        try {
+            await logout();
+            // Redirige a la pantalla pública de Login al cerrar sesión
+            router.replace('/(tabs)/login'); 
+        } catch (e) {
+            Alert.alert("Error", "No se pudo cerrar la sesión.");
+        }
     };
 
-    // Si el hook está cargando el estado de la sesión, mostramos el ActivityIndicator
+    // Función para volver al dashboard de tareas (solicitado)
+    const handleGoBack = () => {
+        // Usa router.back() para volver a la pantalla anterior (que suele ser el dashboard)
+        // o router.replace('/(tabs)/todo') si quieres ir directamente al tab de tareas.
+        router.back(); 
+    };
+
+    // ... (Renderizado de Loading y No User) ...
     if (loading) {
         return (
             <View style={styles.centeredContainer}>
@@ -75,7 +86,6 @@ export default function ProfileScreen() {
             </View>
         );
     }
-
     // UI principal
     return (
         <View style={styles.container}>
@@ -100,6 +110,15 @@ export default function ProfileScreen() {
                     onPress={handleUpdate} 
                     disabled={isUpdating || newDisplayName.trim().length === 0} 
                     color="#007AFF"
+                />
+            </View>
+            
+            {/* 🚀 NUEVO BOTÓN: Volver al Dashboard */}
+            <View style={styles.backButton}>
+                <Button 
+                    title="⬅️ Volver a Tareas" 
+                    onPress={handleGoBack} 
+                    color="#4CAF50" // Color verde
                 />
             </View>
             
@@ -139,6 +158,10 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         fontSize: 16,
         backgroundColor: '#fff',
+    },
+    // Estilo para el nuevo botón "Volver a Tareas"
+    backButton: { 
+        marginBottom: 20, 
     },
     logoutButton: { marginTop: 50 },
     loadingText: { marginTop: 10, fontSize: 16 }

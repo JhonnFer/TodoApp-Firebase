@@ -1,9 +1,9 @@
+
 // app/(tabs)/todos.tsx
 
 import { useAuth } from "@/src/presentation/hooks/useAuth";
 import { useRouter } from "expo-router";
 import { useTodos } from "@/src/presentation/hooks/useTodos";
-// Asegúrate de que las rutas de estilos sean correctas:
 import { createStyles, defaultLightTheme, defaultDarkTheme } from "@/src/presentation/styles/todos.styles"; 
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import React, { useState, useMemo } from "react";
@@ -14,15 +14,13 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Alert, // ⬅️ 1. IMPORTAR ALERT
 } from "react-native";
-
-// 🟢 BENEFICIO: Este componente NO SABE si usamos SQLite, Firebase, o una API
-// Solo sabe que puede llamar a addTodo, toggleTodo, deleteTodo
 
 export default function TodosScreenClean() {
   const [inputText, setInputText] = useState("");
   const { todos, loading, addTodo, toggleTodo, deleteTodo } = useTodos();
-  const { user } = useAuth(); // Se elimina 'logout'
+  const { user } = useAuth();
   const router = useRouter();
 
   // 🎨 Detectar tema y crear estilos dinámicamente
@@ -35,12 +33,31 @@ export default function TodosScreenClean() {
   const handleAddTodo = async () => {
     if (!inputText.trim()) return;
 
-    // Ya no necesitas verificar el usuario aquí, useTodos debería hacerlo.
     const success = await addTodo(inputText); 
     if (success) {
       setInputText("");
     }
   };
+
+  // 🚀 2. FUNCIÓN DE CONFIRMACIÓN
+  const confirmDelete = (id: string) => {
+    Alert.alert(
+        "Confirmar Eliminación",
+        "¿Estás seguro de que quieres eliminar esta tarea? Esta acción no se puede deshacer.",
+        [
+            { 
+                text: "Cancelar", 
+                style: "cancel" // No hace nada, cierra la alerta
+            },
+            { 
+                text: "Eliminar", 
+                style: "destructive", // Muestra el botón en rojo (UX)
+                onPress: () => deleteTodo(id), // ⬅️ LLAMA A LA FUNCIÓN DEL HOOK SOLO SI CONFIRMA
+            }, 
+        ]
+    );
+  };
+  // 🚀 FIN FUNCIÓN DE CONFIRMACIÓN
 
   if (loading) {
     return (
@@ -72,15 +89,13 @@ export default function TodosScreenClean() {
         </Text>
       </TouchableOpacity>
       <TouchableOpacity
-        onPress={() => deleteTodo(item.id)}
+        onPress={() => confirmDelete(item.id)} // ⬅️ 3. USAR LA FUNCIÓN DE CONFIRMACIÓN AQUÍ
         style={styles.deleteButton}
       >
         <Text style={styles.deleteButtonText}>🗑️</Text>
       </TouchableOpacity>
     </View>
   );
-
-  // NOTA: handleLogout fue eliminado de este archivo.
 
   return (
     <View style={styles.container}>
